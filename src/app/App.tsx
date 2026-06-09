@@ -42,6 +42,12 @@ export default function App() {
   const greenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioCtxRef   = useRef<AudioContext | null>(null);
 
+  // 初始化 AudioContext（Electron 配置了 autoplayPolicy: 'no-user-gesture-required'）
+  useEffect(() => {
+    audioCtxRef.current = new AudioContext();
+    return () => { audioCtxRef.current?.close(); };
+  }, []);
+
   useEffect(() => {
     window.electronAPI.getTheme().then((t) => {
       if (t === "light" || t === "dark") setThemeState(t as Theme);
@@ -68,8 +74,9 @@ export default function App() {
   const playSound = useCallback((light: Light) => {
     if (muted) return;
     try {
-      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
       const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
