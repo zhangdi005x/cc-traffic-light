@@ -66,6 +66,15 @@
             "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' red\""
           }
         ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' red\""
+          }
+        ]
       }
     ]
   }
