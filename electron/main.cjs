@@ -3,9 +3,9 @@ const path = require('path')
 const fs = require('fs')
 
 const os = require('os')
-// macOS/Linux 用 /tmp（向后兼容），Windows 用 ~/.claude/（/tmp 不存在）
-const TMP          = process.platform === 'win32' ? path.join(os.homedir(), '.claude') : '/tmp'
-const STATE_FILE   = path.join(TMP, 'cc_traffic_light_state')
+// 使用系统临时目录，跨平台兼容
+const TMP          = os.tmpdir()
+const STATE_FILE   = path.join(TMP, 'claude-traffic-light')
 const PID_FILE     = path.join(TMP, 'cc_traffic_light_electron.pid')
 const THEME_FILE   = path.join(TMP, 'cc_traffic_light_theme')
 const MUTE_FILE    = path.join(TMP, 'cc_traffic_light_mute')
@@ -102,17 +102,17 @@ function setupClaudeHooks() {
   const settingsDir  = path.dirname(settingsPath)
 
   const isWin = process.platform === 'win32'
-  // Windows 用 %USERPROFILE% 环境变量，避免硬编码绝对路径导致跨机器失效
+  // Windows 用 %TEMP% 环境变量，跨平台兼容
   const stateCmd = (color) => isWin
-    ? `cmd /c "echo ${color}> %USERPROFILE%\\.claude\\cc_traffic_light_state"`
+    ? `cmd /c "echo ${color}> %TEMP%\\claude-traffic-light"`
     : `echo ${color} > ${STATE_FILE}`
 
   // Elicitation 在旧版 CC（<2.1.76）不支持，改用 PreToolUse+AskUserQuestion 触发黄灯
   // UserPromptSubmit/Stop 是生命周期事件，不需要 matcher 字段
   const HOOKS_TO_ADD = [
-    { event: 'UserPromptSubmit', command: stateCmd('red')    },
-    { event: 'Stop',             command: stateCmd('green')  },
-    { event: 'PreToolUse',       matcher: 'AskUserQuestion', command: stateCmd('yellow') },
+    { event: 'UserPromptSubmit', command: stateCmd('yellow') },  // 思考中
+    { event: 'Stop',             command: stateCmd('green')  },  // 任务完成
+    { event: 'PreToolUse',       matcher: 'AskUserQuestion', command: stateCmd('red') },  // 需要确认
   ]
   // 需要清理的旧事件（含已废弃的 Elicitation）
   const EVENTS_TO_CLEAN = ['UserPromptSubmit', 'Stop', 'PreToolUse', 'Elicitation']
@@ -136,7 +136,7 @@ function setupClaudeHooks() {
     settings.hooks[event] = settings.hooks[event].filter(h => {
       if (!Array.isArray(h.hooks)) return true
       return !h.hooks.some(hh =>
-        typeof hh.command === 'string' && hh.command.includes('cc_traffic_light_state')
+        typeof hh.command === 'string' && (hh.command.includes('cc_traffic_light_state') || hh.command.includes('claude-traffic-light'))
       )
     })
     if (settings.hooks[event].length !== before) changed = true

@@ -25,9 +25,9 @@ declare global {
 }
 
 const LIGHT_CONFIG = {
-  red:    { active: "#FF3B30", dimDark: "#2a1110", dimLight: "#fde8e7", glow: "rgba(255,59,48,0.55)",  innerGlow: "rgba(255,100,80,0.3)"  },
-  yellow: { active: "#FF9F0A", dimDark: "#271d08", dimLight: "#fef3dc", glow: "rgba(255,159,10,0.55)", innerGlow: "rgba(255,180,60,0.3)"  },
-  green:  { active: "#30D158", dimDark: "#0b2818", dimLight: "#d8f5e4", glow: "rgba(48,209,88,0.55)",  innerGlow: "rgba(80,220,110,0.3)"  },
+  red:    { active: "#ef4444", dimDark: "#2a1110", dimLight: "#fde8e7", glow: "rgba(239,68,68,0.55)",  innerGlow: "rgba(239,100,100,0.3)"  },
+  yellow: { active: "#facc15", dimDark: "#271d08", dimLight: "#fef9e0", glow: "rgba(250,204,21,0.55)", innerGlow: "rgba(250,220,60,0.3)"  },
+  green:  { active: "#22c55e", dimDark: "#0b2818", dimLight: "#d8f5e4", glow: "rgba(34,197,94,0.55)",  innerGlow: "rgba(60,210,110,0.3)"  },
 };
 
 const ORDER: Light[] = ["red", "yellow", "green"];
@@ -193,8 +193,8 @@ export default function App() {
         }
         .light-breathe-red { animation: breathe-red 2s ease-in-out infinite; }
         .light-active { animation: pulse-glow 0.55s ease-in-out infinite; }
-        .ring-pulse-yellow { --ring-color: rgba(255,159,10,0.6); animation: ring-pulse 0.55s ease-out infinite; }
-        .ring-pulse-green  { --ring-color: rgba(48,209,88,0.6);  animation: ring-pulse 0.55s ease-out infinite; }
+        .ring-pulse-yellow { --ring-color: rgba(250,204,21,0.6); animation: ring-pulse 0.55s ease-out infinite; }
+        .ring-pulse-green  { --ring-color: rgba(34,197,94,0.6);  animation: ring-pulse 0.55s ease-out infinite; }
         .no-drag { -webkit-app-region: no-drag; }
       `}</style>
 
@@ -392,7 +392,7 @@ export default function App() {
                 width: 32, height: 18, borderRadius: 9,
                 background: muted
                   ? (dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)")
-                  : "#30D158",
+                  : "#22c55e",
                 position: "relative", transition: "background 0.2s",
                 cursor: "pointer",
               }}
