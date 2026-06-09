@@ -6,7 +6,7 @@
 
 | 灯色 | 状态 | Claude Code 触发 | Cursor IDE 触发 |
 |------|------|------------------|-----------------|
-| 🔴 红灯 | 需要确认 | `PreToolUse` + `AskUserQuestion` | AI 编辑确认弹窗 |
+| 🔴 红灯 | 需要确认 | `AskUserQuestion` / `Bash` / `Write` / `Edit`（需要权限时） | AI 编辑确认弹窗 |
 | 🟡 黄灯 | 思考/执行 | `UserPromptSubmit` / `PostToolUse` | - |
 | 🟢 绿灯 | 任务完成 | `Stop` | - |
 
