@@ -92,7 +92,7 @@ export default function App() {
         osc.type = "triangle";
         osc.frequency.setValueAtTime(440, t);
         osc.frequency.exponentialRampToValueAtTime(220, t + 0.25);
-        gain.gain.setValueAtTime(2, t);
+        gain.gain.setValueAtTime(10, t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
         osc.start(t);
         osc.stop(t + 0.3);
