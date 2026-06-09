@@ -1,0 +1,72 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' yellow\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' yellow\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' green\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' red\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' red\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' red\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"& 'E:/Claude/fristcc/cc-traffic-light-pro/set_state.ps1' red\""
+          }
+        ]
+      }
+    ]
+  }
+}

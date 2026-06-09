@@ -35,6 +35,12 @@ npm install
 ### Claude Code
 Hooks 配置已写入 `~/.claude/settings.json`，发送第一条消息时自动启动 Electron。
 
+配置示例见 `settings.example.json`，包含以下 hooks：
+- `UserPromptSubmit` → 黄灯（用户发送消息）
+- `PostToolUse` → 黄灯（工具执行完成）
+- `Stop` → 绿灯（任务完成）
+- `PreToolUse` + `AskUserQuestion/Bash/Write/Edit` → 红灯（需要确认）
+
 ### Cursor IDE
 1. 安装 [cursor-traffic-light](https://github.com/zhangdi005x/cursor-traffic-light) 扩展
 2. 重启 Cursor
