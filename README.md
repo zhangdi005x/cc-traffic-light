@@ -1,6 +1,6 @@
 # Claude Code 桌面红绿灯 🚦
 
-基于 [Claude-Code-Traffic-Light-Prompt](https://github.com/freed85-xiaozai/Claude-Code-Traffic-Light-Prompt) 的定制版本，适配 Windows 环境。
+基于 [Claude-Code-Traffic-Light-Prompt](https://github.com/freed85-xiaozai/Claude-Code-Traffic-Light-Prompt) 的定制版本，适配 Windows 环境，同时适配与CursorIDE。
 
 ## 功能
 
