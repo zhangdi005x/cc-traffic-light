@@ -70,57 +70,69 @@ export default function App() {
     });
   }, []);
 
-  // 用 Web Audio API 合成轻提示音，无需音频文件
-  const playSound = useCallback((light: Light) => {
+  // 用 Web Audio API 合成提示音，无需音频文件
+  const playSound = useCallback(async (light: Light) => {
     if (muted) return;
     try {
       const ctx = audioCtxRef.current;
-      if (!ctx) return;
-      if (ctx.state === 'suspended') ctx.resume();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      if (!ctx) { console.log('[Sound] no AudioContext'); return; }
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+        console.log('[Sound] AudioContext resumed');
+      }
+      const t = ctx.currentTime;
+      console.log(`[Sound] playing ${light}, ctx.state=${ctx.state}`);
 
-      // 红=低沉短促，黄=中音，绿=清脆双音
+      // 红=低沉警告音，黄=中音，绿=清脆上扬音
       if (light === "red") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(320, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.18, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.18);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, t);
+        osc.frequency.exponentialRampToValueAtTime(220, t + 0.25);
+        gain.gain.setValueAtTime(2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t);
+        osc.stop(t + 0.3);
       } else if (light === "yellow") {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
         osc.type = "sine";
-        osc.frequency.setValueAtTime(480, ctx.currentTime);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.15);
+        osc.frequency.setValueAtTime(480, t);
+        gain.gain.setValueAtTime(1.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.start(t);
+        osc.stop(t + 0.2);
       } else {
         // 绿灯：两个音符，清脆上扬
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(660, t);
+        gain1.gain.setValueAtTime(2, t);
+        gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        osc1.start(t);
+        osc1.stop(t + 0.15);
+
         const osc2 = ctx.createOscillator();
         const gain2 = ctx.createGain();
         osc2.connect(gain2);
         gain2.connect(ctx.destination);
-
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(660, ctx.currentTime);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.12);
-
         osc2.type = "sine";
-        osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
-        gain2.gain.setValueAtTime(0.0, ctx.currentTime);
-        gain2.gain.setValueAtTime(0.15, ctx.currentTime + 0.1);
-        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
-        osc2.start(ctx.currentTime + 0.1);
-        osc2.stop(ctx.currentTime + 0.28);
+        osc2.frequency.setValueAtTime(880, t + 0.12);
+        gain2.gain.setValueAtTime(0.001, t);
+        gain2.gain.setValueAtTime(2, t + 0.12);
+        gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        osc2.start(t + 0.12);
+        osc2.stop(t + 0.35);
       }
-    } catch {}
+    } catch (e) { console.error('[Sound] error:', e); }
   }, [muted]);
 
   // 红=缓慢呼吸，黄=闪烁，绿=闪烁 2.5s 后常亮
