@@ -10,6 +10,9 @@ const PID_FILE     = path.join(TMP, 'cc_traffic_light_electron.pid')
 const THEME_FILE   = path.join(TMP, 'cc_traffic_light_theme')
 const MUTE_FILE    = path.join(TMP, 'cc_traffic_light_mute')
 const STYLE_FILE   = path.join(TMP, 'cc_traffic_light_style')
+const AUTO_THEME_FILE = path.join(TMP, 'cc_traffic_light_auto_theme')
+const LOCATION_FILE   = path.join(TMP, 'cc_traffic_light_location.json')
+const SUNRISE_FILE    = path.join(TMP, 'cc_traffic_light_sunrise.json')
 // 统计文件存到 ~/.claude/，跨平台持久化，不放 /tmp 避免重启丢失
 const STATS_FILE   = path.join(os.homedir(), '.claude', 'cc_traffic_light_stats.json')
 const distPath     = path.join(__dirname, '../dist/index.html')
@@ -35,6 +38,161 @@ function readStyle() {
     const s = fs.existsSync(STYLE_FILE) ? fs.readFileSync(STYLE_FILE, 'utf-8').trim() : ''
     return s === 'single' ? 'single' : 'triple'
   } catch { return 'triple' }
+}
+
+// ========== 自动主题（日出日落）==========
+
+function readAutoTheme() {
+  try {
+    return fs.existsSync(AUTO_THEME_FILE) && fs.readFileSync(AUTO_THEME_FILE, 'utf-8').trim() === 'true'
+  } catch { return false }
+}
+
+function saveAutoTheme(enabled) {
+  try { fs.writeFileSync(AUTO_THEME_FILE, enabled ? 'true' : 'false') } catch {}
+}
+
+function readLocation() {
+  try {
+    if (!fs.existsSync(LOCATION_FILE)) return null
+    return JSON.parse(fs.readFileSync(LOCATION_FILE, 'utf-8'))
+  } catch { return null }
+}
+
+function saveLocation(lat, lng) {
+  try { fs.writeFileSync(LOCATION_FILE, JSON.stringify({ lat, lng, updated: getToday() })) } catch {}
+}
+
+function readSunTimes() {
+  try {
+    if (!fs.existsSync(SUNRISE_FILE)) return null
+    const data = JSON.parse(fs.readFileSync(SUNRISE_FILE, 'utf-8'))
+    // 检查是否是今天的数据
+    if (data.date === getToday()) return data
+    return null
+  } catch { return null }
+}
+
+function saveSunTimes(sunrise, sunset) {
+  try {
+    fs.writeFileSync(SUNRISE_FILE, JSON.stringify({
+      sunrise, sunset, date: getToday()
+    }))
+  } catch {}
+}
+
+// 获取位置（IP 定位，无需授权，自动获取）
+async function getLocationFromIP() {
+  return new Promise((resolve, reject) => {
+    const http = require('http')
+    // 使用免费 IP 定位 API（ip-api.com，无需注册，HTTP 协议）
+    const url = 'http://ip-api.com/json/'
+    const req = http.get(url, (res) => {
+      let data = ''
+      res.on('data', chunk => { data += chunk })
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data)
+          if (json.status === 'success' && json.lat && json.lon) {
+            resolve({ lat: json.lat, lng: json.lon })
+          } else {
+            reject(new Error('IP 定位返回数据无效'))
+          }
+        } catch (e) { reject(e) }
+      })
+    })
+    req.on('error', reject)
+    req.setTimeout(8000, () => { req.destroy(); reject(new Error('IP 定位超时')) })
+  })
+}
+
+// 从 sunrise-sunset.org API 获取日出日落时间
+async function fetchSunTimesFromAPI(lat, lng) {
+  return new Promise((resolve, reject) => {
+    const https = require('https')
+    const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&formatted=0`
+    const req = https.get(url, (res) => {
+      let data = ''
+      res.on('data', chunk => { data += chunk })
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data)
+          if (json.status === 'OK') {
+            resolve({
+              sunrise: json.results.sunrise,
+              sunset: json.results.sunset
+            })
+          } else {
+            reject(new Error('API 返回错误'))
+          }
+        } catch (e) { reject(e) }
+      })
+    })
+    req.on('error', reject)
+    req.setTimeout(8000, () => { req.destroy(); reject(new Error('超时')) })
+  })
+}
+
+// 获取日出日落时间（优先缓存）
+async function getSunTimes(lat, lng) {
+  // 先检查缓存
+  const cached = readSunTimes()
+  if (cached) return cached
+
+  try {
+    const times = await fetchSunTimesFromAPI(lat, lng)
+    // API 返回 UTC 时间，转为本地时间
+    const sunrise = new Date(times.sunrise)
+    const sunset = new Date(times.sunset)
+    const result = {
+      sunrise: `${String(sunrise.getHours()).padStart(2,'0')}:${String(sunrise.getMinutes()).padStart(2,'0')}`,
+      sunset: `${String(sunset.getHours()).padStart(2,'0')}:${String(sunset.getMinutes()).padStart(2,'0')}`,
+      date: getToday()
+    }
+    saveSunTimes(result.sunrise, result.sunset)
+    return result
+  } catch (e) {
+    console.error('[AutoTheme] 获取日出日落失败:', e.message)
+    return null
+  }
+}
+
+// 检查并自动切换主题
+let lastAutoThemeCheck = 0
+function checkAutoTheme() {
+  const now = Date.now()
+  // 每分钟检查一次
+  if (now - lastAutoThemeCheck < 60000) return
+  lastAutoThemeCheck = now
+
+  if (!readAutoTheme()) return
+
+  const location = readLocation()
+  if (!location) return
+
+  const sunTimes = readSunTimes()
+  if (!sunTimes) return
+
+  const currentHour = new Date().getHours()
+  const currentMin = new Date().getMinutes()
+  const currentMinutes = currentHour * 60 + currentMin
+
+  const [sunriseH, sunriseM] = sunTimes.sunrise.split(':').map(Number)
+  const [sunsetH, sunsetM] = sunTimes.sunset.split(':').map(Number)
+  const sunriseMinutes = sunriseH * 60 + sunriseM
+  const sunsetMinutes = sunsetH * 60 + sunsetM
+
+  const shouldBeDark = currentMinutes < sunriseMinutes || currentMinutes >= sunsetMinutes
+  const newTheme = shouldBeDark ? 'dark' : 'light'
+  const currentTheme = readTheme()
+
+  if (newTheme !== currentTheme) {
+    try { fs.writeFileSync(THEME_FILE, newTheme) } catch {}
+    if (mainWin) mainWin.webContents.send('theme-change', newTheme)
+    if (tray) tray.setContextMenu(buildTrayMenu(newTheme, readStyle()))
+    Menu.setApplicationMenu(buildAppMenu(newTheme))
+    console.log(`[AutoTheme] 自动切换: ${currentTheme} → ${newTheme}`)
+  }
 }
 
 function getToday() {
@@ -449,7 +607,7 @@ function createWindow() {
     }
   })
 
-  mainWin.setAlwaysOnTop(true, 'floating')
+  mainWin.setAlwaysOnTop(true, 'screen-saver')
   mainWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
   if (isDev) {
@@ -474,6 +632,8 @@ function createWindow() {
           mainWin.webContents.send('state-change', state)
         }
       }
+      // 自动主题检查（每分钟）
+      checkAutoTheme()
     } catch {}
   }, 300)
 
@@ -523,6 +683,52 @@ function createWindow() {
   })
 
   ipcMain.handle('get-stats', () => readStats())
+
+  // ========== 自动主题 IPC ==========
+  ipcMain.handle('get-auto-theme', () => {
+    return {
+      enabled: readAutoTheme(),
+      location: readLocation(),
+      sunTimes: readSunTimes()
+    }
+  })
+
+  ipcMain.on('set-auto-theme', async (_, enabled) => {
+    saveAutoTheme(enabled)
+    if (enabled) {
+      // 开启时立即获取位置和日出日落
+      try {
+        const loc = await getLocationFromIP()
+        saveLocation(loc.lat, loc.lng)
+        await getSunTimes(loc.lat, loc.lng)
+        checkAutoTheme()
+        if (mainWin) mainWin.webContents.send('auto-theme-updated', {
+          enabled: true,
+          location: readLocation(),
+          sunTimes: readSunTimes()
+        })
+      } catch (e) {
+        console.error('[AutoTheme] 获取位置失败:', e.message)
+        if (mainWin) mainWin.webContents.send('auto-theme-error', e.message)
+      }
+    }
+  })
+
+  ipcMain.handle('get-location', async () => {
+    try {
+      const loc = await getLocationFromIP()
+      saveLocation(loc.lat, loc.lng)
+      return loc
+    } catch (e) {
+      return null
+    }
+  })
+
+  ipcMain.handle('get-sun-times', async () => {
+    const location = readLocation()
+    if (!location) return null
+    return await getSunTimes(location.lat, location.lng)
+  })
 }
 
 app.whenReady().then(() => {

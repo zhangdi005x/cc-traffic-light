@@ -27,4 +27,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setMute: (muted) => ipcRenderer.send('set-mute', muted),
   getStats: () => ipcRenderer.invoke('get-stats'),
   setWindowHeight: (h) => ipcRenderer.send('set-window-height', h),
+  // 自动主题
+  getAutoTheme: () => ipcRenderer.invoke('get-auto-theme'),
+  setAutoTheme: (enabled) => ipcRenderer.send('set-auto-theme', enabled),
+  getLocation: () => ipcRenderer.invoke('get-location'),
+  getSunTimes: () => ipcRenderer.invoke('get-sun-times'),
+  onAutoThemeUpdated: (callback) => {
+    const handler = (_, data) => callback(data)
+    ipcRenderer.on('auto-theme-updated', handler)
+    return () => ipcRenderer.removeListener('auto-theme-updated', handler)
+  },
+  onAutoThemeError: (callback) => {
+    const handler = (_, error) => callback(error)
+    ipcRenderer.on('auto-theme-error', handler)
+    return () => ipcRenderer.removeListener('auto-theme-error', handler)
+  },
 })

@@ -20,6 +20,13 @@ declare global {
       getMute: () => Promise<boolean>;
       setMute: (muted: boolean) => void;
       setWindowHeight: (h: number) => void;
+      // 自动主题
+      getAutoTheme: () => Promise<{enabled: boolean; location: any; sunTimes: any}>;
+      setAutoTheme: (enabled: boolean) => void;
+      getLocation: () => Promise<{lat: number; lng: number} | null>;
+      getSunTimes: () => Promise<{sunrise: string; sunset: string} | null>;
+      onAutoThemeUpdated: (cb: (data: any) => void) => () => void;
+      onAutoThemeError: (cb: (error: string) => void) => () => void;
     };
   }
 }
@@ -39,6 +46,9 @@ export default function App() {
   const [greenSteady, setGreenSteady] = useState(false);
   const [muted, setMuted]             = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [autoTheme, setAutoTheme]     = useState(false);
+  const [sunTimes, setSunTimes]       = useState<{sunrise: string; sunset: string} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const greenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioCtxRef   = useRef<AudioContext | null>(null);
 
@@ -56,6 +66,11 @@ export default function App() {
     window.electronAPI.getStyle().then((s) => {
       if (s === "single" || s === "triple") setStyleState(s as Style);
     });
+    // 加载自动主题状态
+    window.electronAPI.getAutoTheme().then((data) => {
+      setAutoTheme(data.enabled);
+      if (data.sunTimes) setSunTimes(data.sunTimes);
+    });
   }, []);
 
   useEffect(() => {
@@ -68,6 +83,19 @@ export default function App() {
     return window.electronAPI.onStyleChange((s) => {
       if (s === "single" || s === "triple") setStyleState(s as Style);
     });
+  }, []);
+
+  // 自动主题更新事件
+  useEffect(() => {
+    const cleanup1 = window.electronAPI.onAutoThemeUpdated((data) => {
+      setAutoTheme(data.enabled);
+      if (data.sunTimes) setSunTimes(data.sunTimes);
+      setLocationError(null);
+    });
+    const cleanup2 = window.electronAPI.onAutoThemeError((error) => {
+      setLocationError(error);
+    });
+    return () => { cleanup1(); cleanup2(); };
   }, []);
 
   // 用 Web Audio API 合成提示音，无需音频文件
@@ -166,8 +194,9 @@ export default function App() {
   useEffect(() => {
     const base = style === "single" ? 110 : 220;
     const withSettings = style === "single" ? 200 : 310;
-    window.electronAPI.setWindowHeight(showSettings ? withSettings : base);
-  }, [showSettings, style]);
+    const autoThemeExtra = autoTheme && sunTimes ? 30 : 0;
+    window.electronAPI.setWindowHeight(showSettings ? withSettings + autoThemeExtra : base);
+  }, [showSettings, style, autoTheme, sunTimes]);
 
   const toggleMute = () => {
     const next = !muted;
@@ -434,15 +463,19 @@ export default function App() {
             </span>
             <div
               onClick={() => {
+                if (autoTheme) return; // 自动模式下不允许手动切换
                 const next = dark ? "light" : "dark";
                 setThemeState(next);
                 window.electronAPI.setTheme(next);
               }}
               style={{
                 width: 32, height: 18, borderRadius: 9,
-                background: dark ? "#30D158" : "rgba(0,0,0,0.12)",
+                background: autoTheme
+                  ? (dark ? "#5E5CE6" : "#007AFF")
+                  : (dark ? "#30D158" : "rgba(0,0,0,0.12)"),
                 position: "relative", transition: "background 0.2s",
-                cursor: "pointer",
+                cursor: autoTheme ? "default" : "pointer",
+                opacity: autoTheme ? 0.7 : 1,
               }}
             >
               <div style={{
@@ -455,6 +488,62 @@ export default function App() {
               }} />
             </div>
           </label>
+
+          {/* 自动主题开关 */}
+          <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+            <span style={{ fontSize: 11, color: dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)" }}>
+              🌅
+            </span>
+            <div
+              onClick={() => {
+                const next = !autoTheme;
+                setAutoTheme(next);
+                window.electronAPI.setAutoTheme(next);
+                if (!next) setLocationError(null);
+              }}
+              style={{
+                width: 32, height: 18, borderRadius: 9,
+                background: autoTheme
+                  ? "#5E5CE6"
+                  : (dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)"),
+                position: "relative", transition: "background 0.2s",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{
+                position: "absolute", top: 2,
+                left: autoTheme ? 14 : 2,
+                width: 14, height: 14, borderRadius: "50%",
+                background: "white",
+                transition: "left 0.2s",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+              }} />
+            </div>
+          </label>
+
+          {/* 日出日落时间显示 */}
+          {autoTheme && sunTimes && (
+            <div style={{
+              fontSize: 9,
+              color: dark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)",
+              textAlign: "center",
+              lineHeight: 1.4,
+            }}>
+              <div>☀️ {sunTimes.sunrise}</div>
+              <div>🌙 {sunTimes.sunset}</div>
+            </div>
+          )}
+
+          {/* 位置错误提示 */}
+          {autoTheme && locationError && (
+            <div style={{
+              fontSize: 8,
+              color: "#ef4444",
+              textAlign: "center",
+            }}>
+              位置获取失败
+            </div>
+          )}
         </div>
       )}
     </div>
